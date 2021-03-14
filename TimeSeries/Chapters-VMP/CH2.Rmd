@@ -1,0 +1,142 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+Chapter 2
+
+```{r}
+
+pacman::p_load(tidyverse, fpp2, GGally)
+
+```
+
+2.1
+
+```{r}
+
+# time-series object
+y <- ts(c(123, 39, 78, 52, 110),
+        start = 2012)
+
+```
+
+Some visualization
+
+```{r}
+
+# load time-series data.
+d <- melsyd
+
+# autoplot - pretty funky. 
+autoplot(d[, "Economy.Class"]) +
+  labs(title = "Economy class Melbourne-Sydney",
+       y = "Thousands",
+       x = "Year")
+
+# another plot
+autoplot(a10) +
+  ggtitle("Antidiabetic drug sales") +
+  ylab("$ million") +
+  xlab("Year")
+
+# first good plot
+ggseasonplot(a10, year.labels=TRUE, year.labels.left=TRUE) +
+  ylab("$ million") +
+  ggtitle("Seasonal plot: antidiabetic drug sales")
+
+# don't really like these polar ones..
+ggseasonplot(a10, polar=TRUE) +
+  ylab("$ million") +
+  ggtitle("Polar seasonal plot: antidiabetic drug sales") 
+
+# subseries plot
+ggsubseriesplot(a10) +
+  ylab("$ million") +
+  ggtitle("Seasonal subseries plot: antidiabetic drug sales")
+
+# line-plot
+autoplot(elecdemand[,c("Demand", "Temperature")], 
+         facets=TRUE) +
+  xlab("Year: 2014") + ylab("") +
+  ggtitle("Half-hourly electricity demand: Victoria, Australia")
+
+# fucking qplot
+qplot(Temperature, Demand, data=as.data.frame(elecdemand)) +
+  ylab("Demand (GW)") + xlab("Temperature (Celsius)")
+
+# facet
+autoplot(visnights[,1:5], facets=TRUE) +
+  ylab("Number of visitor nights each quarter (millions)")
+
+# pairs plot
+GGally::ggpairs(as.data.frame(visnights[,1:5]))
+
+# lag plots
+# clearly lag 8 is pretty strong, seasonal?? 
+beer2 <- window(ausbeer, start=1992)
+gglagplot(beer2)
+
+# autocorrelation
+ggAcf(beer2)
+
+# trend & seasonality
+aelec <- window(elec, start=1980)
+autoplot(aelec) + xlab("Year") + ylab("GWh")
+ggAcf(aelec, lag=48)
+
+# white noise
+set.seed(30)
+y <- ts(rnorm(50))
+autoplot(y) + ggtitle("White noise")
+ggAcf(y)
+
+```
+
+# Exercises
+
+## E1
+Use the help function to explore what the series gold, woolyrnq and gas represent.
+
+Use autoplot() to plot each of these in separate plots.
+What is the frequency of each series? Hint: apply the frequency() function.
+
+Use which.max() to spot the outlier in the gold series. Which observation was it?
+
+```{r}
+
+# daily morning gold priors in US dollars (1985-1989)
+?gold
+
+# quarterly prod. of woollwn yarin in AUS (1965-1994)
+?woolyrnq
+
+# AUS monthly gas production (1956-1995)
+?gas
+
+# plot and frequency
+plotfreq <- function(d){
+  
+  plt <- d %>%
+    autoplot()
+  
+  print(frequency(d))
+  
+  return(plt)
+  
+}
+
+gold_plot <- plotfreq(gold)
+wool_plot <- plotfreq(woolyrnq)
+gas_plot <- plotfreq(gas)
+
+cowplot::plot_grid(gold_plot, wool_plot, gas_plot)
+
+# outlier in gold: 
+which.max(gold)
+
+```
+
+## E2
+need files for the rest of the exercises..
+
