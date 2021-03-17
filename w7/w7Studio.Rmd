@@ -1,0 +1,213 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+# load stuf
+pacman::p_load(tidyverse, lubridate, tsibble,
+               tsibbledata, feasts)
+
+```
+
+```{r}
+# Exercises
+
+
+#### 1 ####
+
+## a.
+### Create a tsibble which is identical to the tourism tsibble from the package
+### using the tourism.xlsx file 
+setwd("~/DataScience/w7")
+d <- read_csv("tourism.csv") %>%
+  mutate(Quarter = yearquarter(Quarter)) %>%
+  as_tsibble(key = c("Region", "State", "Purpose"), 
+             index = "Quarter")
+
+head(tourism)
+data(tourism) # <-- what you want to recreate. This line loads the tourism dataset
+# into your environment. Interact with it as normal. eg:
+head(tourism)
+```
+
+```{r}
+## b.
+### Find the combination of Region and Purpose that had maximum number of  trips
+### on average in 2001
+
+d2 <- d %>%
+  mutate(year = year(Quarter)) %>%
+  filter(year == "2001") %>%
+  group_by(Region, Purpose) %>%
+  summarize(maximum = max(Trips)) %>%
+  arrange(desc(maximum)) %>%
+  glimpse() # Sydney + Business. 
+```
+
+```{r}
+## c.
+### Find the combination of Region and Purpose that had the maximum number of trips
+### on average across all time
+
+d %>%
+  group_by(Region, Purpose) %>%
+  summarize(mean_max = mean(Trips)) %>%
+  arrange(desc(mean_max)) %>%
+  glimpse() # Melbourne & Visiting. 
+
+```
+
+```{r}
+## d.
+### Plot the number of business trips per quarter in Melbourne
+d %>%
+  filter(Region == "Melbourne",
+         Purpose == "Business") %>%
+  ggplot(aes(x = Quarter, y = Trips)) + 
+  geom_line() +
+  geom_point() 
+
+
+```
+
+```{r}
+## e. 
+### Calculate and plot the autocorrelation of the number of 
+### holiday trips per quarter in Melbourne
+
+# plot it first 
+d %>%
+  filter(Region == "Melbourne",
+         Purpose == "Holiday") %>%
+  ggplot(aes(x = Quarter, y = Trips)) + 
+  geom_smooth(method = "lm") +
+  geom_point() 
+
+# calculate stuff
+library(fpp2)
+d %>%
+  filter(Region == "Melbourne",
+         Purpose == "Holiday") %>%
+  ACF(Trips) %>%
+  autoplot()
+
+```
+
+
+```{r}
+## f.
+### plot the autocorrelation of the number of "Visiting" trips in Melbourne 
+### between 2000 and 2005
+d %>%
+  mutate(year = year(Quarter)) %>%
+  filter(Region == "Melbourne",
+         Purpose == "Visiting",
+         between(year, 2000, 2005)) %>%
+  ACF(Trips) %>%
+  autoplot()
+
+```
+
+
+```{r}
+## g.
+### Use the Ljung-Box test to test for autocorrelation in the number of
+### 1) holiday trips per quarter in Melbourne
+### 2) Number of visiting trips to Melbourne between 2000 and 2005
+### What are appropriate values for lag (h) and fitdf (k)?
+d2 <- d %>% mutate(year = year(Quarter))
+
+# not white noise. 
+d2 %>%
+  filter(Region == "Melbourne") %>%
+  features(Trips, ljung_box, lag = 8)
+
+# degrees of freedom. 
+d2 %>% 
+  filter(between(year, 2000, 2005),
+         Region == "Melbourne",
+         Purpose == "Visiting") %>%
+  features(Trips, ljung_box, lag = 8)
+  
+# just a little plot
+d2 %>%
+  filter(Region == "Melbourne",
+         Purpose == "Visiting") %>%
+  ggplot(aes(x = Quarter, y = Trips)) +
+  geom_line() 
+
+```
+
+```{r}
+## h.
+### Do the results from the test align with your intuition?
+
+# nej tak. 
+```
+
+
+```{r}
+#### 2 #####
+
+## a. plot the usgdp data
+library(expsmooth) # more datasets (in ts format)
+data(usgdp) 
+
+tsGDP <- usgdp %>% as_tsibble()
+
+```
+
+```{r}
+## b, find an appropriate Box-Cox transformation for the usgdp data and plot it
+
+# find lambda 
+lambda <- tsGDP %>% 
+  features(value, features = guerrero) %>%
+  pull(lambda_guerrero)
+
+# linear in n-space.  
+tsGDP %>% 
+  autoplot(box_cox(value, lambda)) +
+  labs(title = "good test")
+
+```
+
+```{r}
+## c.
+### Would a Box-Cox transformation be helpful for the cangas data? Why/why not?
+
+c <- cangas %>% as_tsibble() 
+
+# perhaps 
+p1 <- autoplot(c)
+
+# do it. 
+lambda <- c %>% 
+  features(value, features = guerrero) %>%
+  pull(lambda_guerrero)
+
+# new plot.. 
+p2 <- c %>% 
+  autoplot(box_cox(value, lambda)) +
+  labs(title = "good test")
+
+# plot the stuff. 
+cowplot::plot_grid(p1, p2)
+
+```
+
+```{r}
+## c. 
+### 1) Fit a number of appropriate baseline models to the entropy of the Danish 
+###    speeches you calculated last time.
+### 2) Check the residuals. Are they uncorrelated and normally distributed; 
+###    is there something you didn't model?
+### 3) Divide the speeches into a train set including all speeches from the 
+###    beginning until the end of Lars Løkke's term. Use Mette Frederiksen's
+###    speeches as the test set. How well are you able to predict the
+###    entropy of her speeches?
+```
+
+Done?
+Do the exercises from chapter 2 and 3 in the book

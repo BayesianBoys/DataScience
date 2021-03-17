@@ -1,0 +1,330 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+CH5 - time series regression model
+
+```{r}
+
+pacman::p_load(fpp2, tidyverse)
+
+```
+
+example
+
+```{r}
+
+autoplot(uschange[,c("Consumption","Income")]) +
+  ylab("% change") + xlab("Year")
+
+```
+
+```{r}
+uschange %>%
+  as.data.frame() %>%
+  ggplot(aes(x=Income, y=Consumption)) +
+    ylab("Consumption (quarterly % change)") +
+    xlab("Income (quarterly % change)") +
+    geom_point() +
+    geom_smooth(method="lm", se=FALSE)
+```
+
+tslm
+
+```{r}
+tslm(Consumption ~ Income, data=uschange)
+```
+
+Multiple regression
+
+```{r}
+uschange %>%
+  as.data.frame() %>%
+  GGally::ggpairs()
+```
+
+extended lm() model
+
+```{r}
+
+# basically lm() with additional functionality
+fit.consMR <- tslm(
+  Consumption ~ Income + Production + Unemployment + Savings,
+  data=uschange)
+summary(fit.consMR)
+
+```
+
+How good are our fitted values vs. 
+the real data?
+--> pretty good. 
+
+```{r}
+
+autoplot(uschange[,'Consumption'], series="Data") +
+  autolayer(fitted(fit.consMR), series="Fitted") +
+  xlab("Year") + ylab("") +
+  ggtitle("Percent change in US consumption expenditure") +
+  guides(colour=guide_legend(title=" "))
+
+```
+
+```{r}
+cbind(Data = uschange[,"Consumption"],
+      Fitted = fitted(fit.consMR)) %>%
+  as.data.frame() %>%
+  ggplot(aes(x=Data, y=Fitted)) +
+    geom_point() +
+    ylab("Fitted (predicted values)") +
+    xlab("Data (actual values)") +
+    ggtitle("Percent change in US consumption expenditure") +
+    geom_abline(intercept=0, slope=1)
+```
+
+residual erros not mean = 0: 
+we have systematic bias in our model. 
+
+autocorrelated errors:
+unbiased, but indicates that we lack
+import predictors in our model
+
+```{r}
+checkresiduals(fit.consMR)
+```
+
+checking residuals 
+
+```{r}
+df <- as.data.frame(uschange)
+df[,"Residuals"]  <- as.numeric(residuals(fit.consMR))
+p1 <- ggplot(df, aes(x=Income, y=Residuals)) +
+  geom_point()
+p2 <- ggplot(df, aes(x=Production, y=Residuals)) +
+  geom_point()
+p3 <- ggplot(df, aes(x=Savings, y=Residuals)) +
+  geom_point()
+p4 <- ggplot(df, aes(x=Unemployment, y=Residuals)) +
+  geom_point()
+gridExtra::grid.arrange(p1, p2, p3, p4, nrow=2)
+```
+
+homoscedastic residuals
+
+```{r}
+cbind(Fitted = fitted(fit.consMR),
+      Residuals=residuals(fit.consMR)) %>%
+  as.data.frame() %>%
+  ggplot(aes(x=Fitted, y=Residuals)) + geom_point()
+```
+
+spurious correlation of 
+non-stationary time-series
+
+```{r}
+aussies <- window(ausair, end=2011)
+fit <- tslm(aussies ~ guinearice)
+summary(fit)
+```
+
+Residuals look weird.
+A good indicator that the two variables
+are actually unrelated even though the R^2
+fit is pretty damn good. 
+
+```{r}
+checkresiduals(fit)
+```
+
+```{r}
+beer2 <- window(ausbeer, start=1992)
+autoplot(beer2) + xlab("Year") + ylab("Megalitres")
+```
+
+Using dummy variables. 
+Intercept will here be season 1 (first quarter). 
+then each other season is a difference from this
+intercept value. 
+
+```{r}
+
+fit.beer <- tslm(beer2 ~ trend + season)
+summary(fit.beer)
+
+```
+
+```{r}
+autoplot(beer2, series="Data") +
+  autolayer(fitted(fit.beer), series="Fitted") +
+  xlab("Year") + ylab("Megalitres") +
+  ggtitle("Quarterly Beer Production")
+```
+
+```{r}
+cbind(Data=beer2, Fitted=fitted(fit.beer)) %>%
+  as.data.frame() %>%
+  ggplot(aes(x = Data, y = Fitted,
+             colour = as.factor(cycle(beer2)))) +
+    geom_point() +
+    ylab("Fitted") + xlab("Actual values") +
+    ggtitle("Quarterly beer production") +
+    scale_colour_brewer(palette="Dark2", name="Quarter") +
+    geom_abline(intercept=0, slope=1)
+```
+
+spike variable: dummy with 0 outside of intervention
+and 1 for time of intervention. 
+
+step variable: dummy with 0 before intervention and
+1 going forward (assuming permanent effect). 
+
+Fourier can be used for seasonal trends. 
+Good for shorter periods (where m is large),
+e.g. for m = 52 weeks in a year rather than 
+for m = 4 quarters in a year. 
+
+```{r}
+fourier.beer <- tslm(beer2 ~ trend + fourier(beer2, K=2))
+summary(fourier.beer)
+```
+
+predictive accuracy better than p-values
+and glancing at scatter-plots
+
+```{r}
+CV(fit.consMR)
+```
+
+adjusted R^2 penalizes predictors and is pretty good.
+tends to err on the side of selecting too many 
+predictors though. 
+
+```{r}
+beer2 <- window(ausbeer, start=1992)
+fit.beer <- tslm(beer2 ~ trend + season)
+fcast <- forecast(fit.beer)
+autoplot(fcast) +
+  ggtitle("Forecasts of beer production using regression") +
+  xlab("Year") + ylab("megalitres")
+```
+
+assuming future states of predictor
+variables
+
+```{r}
+fit.consBest <- tslm(
+  Consumption ~ Income + Savings + Unemployment,
+  data = uschange)
+h <- 4
+newdata <- data.frame(
+    Income = c(1, 1, 1, 1),
+    Savings = c(0.5, 0.5, 0.5, 0.5),
+    Unemployment = c(0, 0, 0, 0))
+fcast.up <- forecast(fit.consBest, newdata = newdata)
+newdata <- data.frame(
+    Income = rep(-1, h),
+    Savings = rep(-0.5, h),
+    Unemployment = rep(0, h))
+fcast.down <- forecast(fit.consBest, newdata = newdata)
+```
+
+```{r}
+autoplot(uschange[, 1]) +
+  ylab("% change in US consumption") +
+  autolayer(fcast.up, PI = TRUE, series = "increase") +
+  autolayer(fcast.down, PI = TRUE, series = "decrease") +
+  guides(colour = guide_legend(title = "Scenario"))
+```
+
+```{r}
+fit.cons <- tslm(Consumption ~ Income, data = uschange)
+h <- 4
+fcast.ave <- forecast(fit.cons,
+  newdata = data.frame(
+    Income = rep(mean(uschange[,"Income"]), h)))
+fcast.up <- forecast(fit.cons,
+  newdata = data.frame(Income = rep(5, h)))
+autoplot(uschange[, "Consumption"]) +
+  ylab("% change in US consumption") +
+  autolayer(fcast.ave, series = "Average increase",
+    PI = TRUE) +
+  autolayer(fcast.up, series = "Extreme increase",
+    PI = TRUE) +
+  guides(colour = guide_legend(title = "Scenario"))
+```
+
+log-log
+log-linear
+linear-log
+piecewise linear (knots). 
+regression splines. 
+quadratic & higher-order trends unreliable. 
+
+example of picewise (knots)
+
+```{r}
+boston_men <- window(marathon, start=1924)
+h <- 10
+fit.lin <- tslm(boston_men ~ trend)
+fcasts.lin <- forecast(fit.lin, h = h)
+fit.exp <- tslm(boston_men ~ trend, lambda = 0)
+fcasts.exp <- forecast(fit.exp, h = h)
+
+t <- time(boston_men)
+t.break1 <- 1950
+t.break2 <- 1980
+tb1 <- ts(pmax(0, t - t.break1), start = 1924)
+tb2 <- ts(pmax(0, t - t.break2), start = 1924)
+
+fit.pw <- tslm(boston_men ~ t + tb1 + tb2)
+t.new <- t[length(t)] + seq(h)
+tb1.new <- tb1[length(tb1)] + seq(h)
+tb2.new <- tb2[length(tb2)] + seq(h)
+
+newdata <- cbind(t=t.new, tb1=tb1.new, tb2=tb2.new) %>%
+  as.data.frame()
+fcasts.pw <- forecast(fit.pw, newdata = newdata)
+
+fit.spline <- tslm(boston_men ~ t + I(t^2) + I(t^3) +
+  I(tb1^3) + I(tb2^3))
+fcasts.spl <- forecast(fit.spline, newdata = newdata)
+
+autoplot(boston_men) +
+  autolayer(fitted(fit.lin), series = "Linear") +
+  autolayer(fitted(fit.exp), series = "Exponential") +
+  autolayer(fitted(fit.pw), series = "Piecewise") +
+  autolayer(fitted(fit.spline), series = "Cubic Spline") +
+  autolayer(fcasts.pw, series="Piecewise") +
+  autolayer(fcasts.lin, series="Linear", PI=FALSE) +
+  autolayer(fcasts.exp, series="Exponential", PI=FALSE) +
+  autolayer(fcasts.spl, series="Cubic Spline", PI=FALSE) +
+  xlab("Year") + ylab("Winning times in minutes") +
+  ggtitle("Boston Marathon") +
+  guides(colour = guide_legend(title = " "))
+
+```
+
+natural cubic smoothing lines. 
+
+```{r}
+boston_men %>%
+  splinef(lambda=0) %>%
+  autoplot()
+```
+
+check residuals
+
+```{r}
+boston_men %>%
+  splinef(lambda=0) %>%
+  checkresiduals()
+```
+
+causation not necessary for prediction,
+but often an understanding of causal mechanisms
+can lead to better model-development. 
+
+multicollinearity not really a big issue
+unless there is perfect correlation.
+
+exercises..

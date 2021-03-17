@@ -1,0 +1,150 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+CH 7 - Exponential smoothing
+
+```{r}
+
+pacman::p_load(fpp2, tidyverse)
+
+```
+
+```{r}
+oildata <- window(oil, start=1996)
+autoplot(oildata) +
+  ylab("Oil (millions of tonnes)") + xlab("Year")
+```
+
+```{r}
+oildata <- window(oil, start=1996)
+# Estimate parameters
+fc <- ses(oildata, h=5)
+# Accuracy of one-step-ahead training errors
+round(accuracy(fc),2)
+```
+
+basic (flat) exponential weighing function
+
+```{r}
+autoplot(fc) +
+  autolayer(fitted(fc), series="Fitted") +
+  ylab("Oil (millions of tonnes)") + xlab("Year")
+```
+
+allowing for trend
+
+```{r}
+air <- window(ausair, start=1990)
+fc <- holt(air, h=5)
+```
+
+dampening (extremely popular). 
+
+comparison:
+
+```{r}
+fc <- holt(air, h=15)
+fc2 <- holt(air, damped=TRUE, phi = 0.9, h=15)
+autoplot(air) +
+  autolayer(fc, series="Holt's method", PI=FALSE) +
+  autolayer(fc2, series="Damped Holt's method", PI=FALSE) +
+  ggtitle("Forecasts from Holt's method") + xlab("Year") +
+  ylab("Air passengers in Australia (millions)") +
+  guides(colour=guide_legend(title="Forecast"))
+```
+
+```{r}
+autoplot(livestock) +
+  xlab("Year") + ylab("Livestock, sheep in Asia (millions)")
+```
+
+MSE & MAE
+
+```{r}
+
+e1 <- tsCV(livestock, ses, h=1)
+e2 <- tsCV(livestock, holt, h=1)
+e3 <- tsCV(livestock, holt, damped=TRUE, h=1)
+
+mean(e1^2, na.rm=TRUE) #etc.
+mean(abs(e1), na.rm=TRUE) #etc. 
+
+```
+
+Damped Holt's best
+
+```{r}
+fc <- holt(livestock, damped=TRUE)
+fc[["model"]]
+```
+
+```{r}
+autoplot(fc) +
+  xlab("Year") + ylab("Livestock, sheep in Asia (millions)")
+```
+
+Seasonality
+both additive and multiplicative method. 
+
+```{r}
+aust <- window(austourists,start=2005)
+fit1 <- hw(aust,seasonal="additive")
+fit2 <- hw(aust,seasonal="multiplicative")
+autoplot(aust) +
+  autolayer(fit1, series="HW additive forecasts", PI=FALSE) +
+  autolayer(fit2, series="HW multiplicative forecasts",
+    PI=FALSE) +
+  xlab("Year") +
+  ylab("Visitor nights (millions)") +
+  ggtitle("International visitors nights in Australia") +
+  guides(colour=guide_legend(title="Forecast"))
+
+```
+
+```{r}
+hw(y, damped=TRUE, seasonal="multiplicative")
+```
+
+daily data
+
+```{r}
+fc <- hw(subset(hyndsight,end=length(hyndsight)-35),
+         damped = TRUE, seasonal="multiplicative", h=35)
+autoplot(hyndsight) +
+  autolayer(fc, series="HW multi damped", PI=FALSE)+
+  guides(colour=guide_legend(title="Daily forecasts"))
+```
+
+```{r}
+ets(y, model="ZZZ", damped=NULL, alpha=NULL, beta=NULL,
+    gamma=NULL, phi=NULL, lambda=NULL, biasadj=FALSE,
+    additive.only=FALSE, restrict=TRUE,
+    allow.multiplicative.trend=FALSE)
+```
+
+example
+
+```{r}
+aust <- window(austourists, start=2005)
+fit <- ets(aust)
+summary(fit)
+
+autoplot(fit)
+```
+
+```{r}
+cbind('Residuals' = residuals(fit),
+      'Forecast errors' = residuals(fit,type='response')) %>%
+  autoplot(facet=TRUE) + xlab("Year") + ylab("")
+```
+
+forecasts from ETS model
+
+```{r}
+fit %>% forecast(h=8) %>%
+  autoplot() +
+  ylab("International visitor night in Australia (millions)")
+```
+
