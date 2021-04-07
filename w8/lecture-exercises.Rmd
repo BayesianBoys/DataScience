@@ -1,0 +1,29 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+# Hands-on time series manipulation
+
+1. load the package
+
+```{r}
+
+pacman::p_load(tidyverse, fpp3, M4comp2018)
+
+```
+
+
+2. choose a time series from the M4 competition.
+
+```{r}
+
+```
+
+
+3. fill it into a tsibble (CH2)
+4. explore features of time-series (CH4)
+5. make some simple forecasts (CH5)
+6. Make sense of series using regression (CH7)
+7. compare with winning entries to M4 competition. 
+

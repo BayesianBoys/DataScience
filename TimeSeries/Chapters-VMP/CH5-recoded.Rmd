@@ -1,0 +1,506 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+
+pacman::p_load(tidyverse, fpp3)
+
+```
+
+```{r}
+
+# load data and create relevant variable
+gdppc <- global_economy %>%
+  mutate(GDP_per_capita = GDP / Population)
+
+```
+
+```{r}
+
+# prefer manual.
+gdppc %>%
+  filter(Country == "Sweden") %>%
+  ggplot(aes(x = Year, y = GDP_per_capita)) + 
+  geom_line() +
+  labs(x = "$US", y = "GDP per capita for Sweden")
+
+```
+
+```{r}
+
+# define a (linear) model
+# TSLM(GDP_per_capita ~ trend())
+
+```
+
+```{r}
+
+# train model
+fit <- gdppc %>%
+  model(trend_model = TSLM(GDP_per_capita ~ trend()))
+
+
+```
+
+```{r}
+
+# generate forecasts
+fit %>% forecast(h = 3) %>%
+  glimpse()
+
+```
+
+```{r}
+
+# plot it
+fit %>% 
+  forecast(h = 3) %>%
+  filter(Country == "Sweden") %>%
+  autoplot(gdppc) + #not sure how to do this manually.. would require some tweaking..
+  labs(x = "$US", y = "GDP per capita Sweden")
+
+```
+
+5.2 some simple forecasting methods
+
+```{r}
+
+bricks <- aus_production %>%
+  filter_index("1970 Q1" ~ "2004 Q4") #this syntax is a bit funky..
+
+```
+
+```{r}
+
+# avg. method
+bricks %>% model(MEAN(Bricks)) 
+
+# naive method
+bricks %>% model(NAIVE(Bricks))
+
+# seasonal naive
+bricks %>% model(SNAIVE(Bricks ~ lag("year")))
+ 
+# drift
+bricks %>% model(RW(Bricks ~ drift()))
+
+```
+
+example.
+should do this without autoplot..
+
+```{r}
+
+# training data from 1992 to 2006
+train <- aus_production %>%
+  filter_index("1992 Q1" ~ "2006 Q4")
+
+# fit models
+beer_fit <- train %>%
+  model(
+    Mean = MEAN(Beer),
+    Naive = NAIVE(Beer),
+    Seasonal = SNAIVE(Beer)
+  )
+
+# forecasts for 14 quarters
+beer_fc <- beer_fit %>%
+  forecast(h = 14)
+
+# plot against actual
+beer_fc %>%
+  autoplot(train, level = NULL) +
+  autolayer(
+    filter_index(aus_production, "2007 Q1" ~ .),
+    color = "black") +
+  labs(y = "Megalitres",
+       title = "Forecast for Quarterly Beer Production") +
+  guides(colour = guide_legend(title = "forecast"))
+
+```
+
+Example: google
+
+```{r}
+
+# re-index based on trading days
+google_stock <- gafa_stock %>%
+  filter(Symbol == "GOOG", year(Date) >= 2015) %>%
+  mutate(day = row_number()) %>%
+  update_tsibble(index = day, regular = TRUE)
+
+# Filter year of interest
+google_2015 <- google_stock %>%
+  filter(year(Date) == 2015)
+
+# Fit models
+google_fit <- google_2015 %>%
+  model(
+    Mean = MEAN(Close),
+    Naive = NAIVE(Close),
+    Drift = NAIVE(Close ~ drift())
+  )
+
+# produce forecasts
+google_jan_2016 <- google_stock %>%
+  filter(yearmonth(Date) == yearmonth("2016 Jan"))
+
+google_fc <- google_fit %>%
+  forecast(new_data = google_jan_2016)
+
+# plot
+google_fc %>%
+  autoplot(google_2015, level = NULL) +
+  autolayer(google_jan_2016, Close, color = "black") +
+  labs(y = "$US",
+       title = "Google daily closing stock prizes",
+       subtitle = "(Jan 2015 - Jan 2016)") +
+  guides(colour = guide_legend(title = "Forecast"))
+
+```
+
+5.3 fitted values & residuals
+
+```{r}
+
+# augment() to a fitted model object
+# gives us fitted and residuals.
+augment(beer_fit)
+
+```
+
+5.4 residual diagnostics
+
+Innovation residuals should:
+1. be uncorrelated & 
+2. have 0 mean. 
+Otherwise the model is biased and/or can be improved. 
+
+Example: google
+
+```{r}
+
+# recall google 2015
+autoplot(google_2015, Close) + 
+  labs(y = "$US",
+       title = "google daily closing stock prize in 2015")
+
+# residuals from Naive
+aug <- google_2015 %>%
+  model(NAIVE(Close)) %>%
+  augment()
+
+autoplot(aug, .innov) + 
+  labs(y = "$US",
+       title = "Residuals from Naive method")
+
+aug %>%
+  ggplot(aes(x = .innov)) +
+  geom_histogram() +
+  labs(title = "Histogram of residuals")
+
+aug %>%
+  ACF(.innov) %>%
+  autoplot() +
+  labs(title = "Residuals from the Naive method")
+
+# shorthand
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  gg_tsresiduals()
+
+```
+
+```{r}
+
+# Portmanteau test for autocorrelation
+aug %>% features(.innov, box_pierce, lag = 10, dof = 0)
+aug %>% features(.innov, ljung_box, lag = 10, dof = 0)
+# both non-distinguishable from white noise (significance). 
+
+```
+
+```{r}
+
+# drift on google
+fit <- google_2015 %>% model(RW(Close ~ drift()))
+tidy(fit)
+
+augment(fit) %>% features(.innov, ljung_box, lag = 10, dof = 1)
+
+```
+
+5.5 Distributional forecasts and prediction intervals 
+
+prediction intervals for Naive method
+
+```{r}
+
+# hilo() function. 
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  forecast(h = 10) %>%
+  hilo() # 80 and 95% PI. (has level argument). 
+
+# plot them (shaded regions). 
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  forecast(h = 10) %>%
+  autoplot(google_2015) +
+  labs(title = "Google daily closing",
+       y = "$US")
+
+```
+
+PI for bootstrapped resid.
+
+```{r}
+
+# fit model
+fit <- google_2015 %>%
+  model(NAIVE(Close))
+
+# get 5 possible paths (futures) for next 30 days..
+sim <- fit %>%
+  generate(h = 30, times = 5, bootstrap = TRUE)
+sim
+
+# plot them (looks good). 
+google_2015 %>%
+  ggplot(aes(x = day)) +
+  geom_line(aes(y = Close)) +
+  geom_line(aes(y = .sim, colour = as.factor(.rep)),
+            data = sim) +
+  labs(title = "Closing stock price", y = "$US") +
+  guides(col = FALSE)
+
+```
+
+```{r}
+
+# bootstrap build into forecast.
+fc <- fit %>%
+  forecast(h = 30, bootstrap = TRUE)
+fc
+
+# plot
+autoplot(fc, google_2015) +
+  labs(title = "Closing Stock",
+       y = "$US")
+
+# number of samples with "times" argument
+google_2015 %>%
+  model(NAIVE(Close)) %>%
+  forecast(h = 10, bootstrap = TRUE, times = 1000) %>%
+  hilo()
+
+```
+
+5.6 Forecasting using transformations
+
+bias-adjustment example
+
+```{r}
+
+# pretty big difference..
+prices %>%
+  filter(!is.na(eggs)) %>%
+  model(RW(log(eggs) ~ drift())) %>%
+  forecast(h = 50) %>%
+  autoplot(prices %>% filter(!is.na(eggs)),
+           level = 80, point_forecast = lst(mean, median)) +
+  labs(title = "Annual egg prices",
+       y = "$US (infl. adj.)")
+
+```
+
+5.7 Forecasting with decomposition
+
+example (empl. in US retail sector)
+
+```{r}
+
+us_retail_employment <- us_employment %>%
+  filter(year(Month) >= 1990, Title == "Retail Trade")
+
+dcmp <- us_retail_employment %>%
+  model(STL(Employed ~ trend(window = 7), robust = TRUE)) %>%
+  components() %>%
+  select(-.model)
+
+dcmp %>%
+  model(NAIVE(season_adjust)) %>%
+  forecast() %>%
+  autoplot(dcmp) +
+  labs(y = "N people",
+       title = "US retail empl.")
+
+```
+
+```{r}
+
+fit_dcmp <- us_retail_employment %>%
+  model(stlf = decomposition_model(
+    STL(Employed ~ trend(window = 7),
+        robust = TRUE),
+    NAIVE(season_adjust)
+  ))
+
+fit_dcmp %>%
+  forecast() %>%
+  autoplot(us_retail_employment) +
+  labs(y = "N people",
+       title = "Monthly US retail empl.")
+
+```
+
+resid.
+
+```{r}
+
+fit_dcmp %>% gg_tsresiduals()
+
+```
+
+5.8 Evaluation point forecast accuracy. 
+
+```{r}
+
+# subsetting 
+## filter
+aus_production %>% filter(year(Quarter) >= 1995)
+
+## slice
+aus_production %>%
+  slice(n()-19:0) #last 20 observations.
+
+aus_retail %>%
+  group_by(State, Industry) %>%
+  slice(1:12) # first year. 
+
+```
+
+Errors (examples)
+
+```{r}
+
+recent_production <- aus_production %>%
+  filter(year(Quarter) >= 1992)
+
+beer_train <- recent_production %>%
+  filter(year(Quarter) <= 2007)
+
+beer_fit <- beer_train %>%
+  model(
+    Mean = MEAN(Beer),
+    Naive = NAIVE(Beer),
+    sNAIVE = SNAIVE(Beer),
+    Drift = RW(Beer ~ drift())
+  )
+
+beer_fc <- beer_fit %>%
+  forecast(h = 10)
+
+beer_fc %>%
+  autoplot(
+    aus_production %>% filter(year(Quarter) >= 1992),
+    level = NULL) +
+  labs(
+    y = "Megalitres",
+    title = "Forecast for quarterly beer prod."
+  ) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+```
+
+5.9 Eval. distribution forecast accuracy
+
+Quantile scores
+
+```{r}
+
+google_fc %>%
+  filter(.model == "Naive") %>%
+  autoplot(bind_rows(google_2015, google_jan_2016), level = 80) +
+  labs(y = "$US",
+       title = "Google closing stock")
+
+# quantile score
+google_fc %>%
+  filter(.model == "Naive", Date == "2016-01-04") %>%
+  accuracy(google_stock, list(qs = quantile_score), probs = 0.10)
+
+# Winkler Score (eval. PI). 
+google_fc %>%
+  filter(.model == "Naive",
+         Date == "2016-01-04") %>%
+  accuracy(google_stock,
+           list(winkler = winkler_score),
+           level = 80)
+
+# cont. ranked prob. score (pretty good). 
+google_fc %>%
+  accuracy(google_stock, list(crps = CRPS))
+
+# relative to benchmarks (how much does it improve upon benchmark).
+# here the values are negative because NAIVE is best..
+google_fc %>%
+  accuracy(google_stock, list(skill = skill_score(CRPS)))
+
+```
+
+Time series cross-validation
+
+```{r}
+
+# cross-validation
+google_2015_tr <- google_2015 %>%
+  stretch_tsibble(.init = 3, .step = 1) %>%
+  relocate(Date, Symbol, .id)
+
+google_2015_tr
+
+```
+
+```{r}
+
+# TSCV accuracy
+google_2015_tr %>%
+  model(RW(Close ~ drift())) %>%
+  forecast(h = 1) %>%
+  accuracy(google_2015)
+
+# training set accuracy
+google_2015 %>%
+  model(RW(Close ~ drift())) %>%
+  accuracy()
+
+```
+
+Good way to choose best forecasting model
+is the CV model with lowest RMSE. 
+
+Example: 
+
+```{r}
+
+# forecast error increases with horizon (as it should).
+google_2015_tr <- google_2015 %>%
+  stretch_tsibble(.init = 3, .step = 1)
+
+fc <- google_2015_tr %>%
+  model(RW(Close ~ drift())) %>%
+  forecast(h = 8) %>%
+  group_by(.id) %>%
+  mutate(h = row_number()) %>%
+  ungroup()
+
+fc %>%
+  accuracy(google_2015, by = c("h", ".model")) %>%
+  ggplot(aes(x = h, y = RMSE)) +
+  geom_point()
+
+```
+
