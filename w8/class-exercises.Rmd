@@ -63,6 +63,9 @@ you just made using TSLM. Experiment with trend(), season() and knots.
 d <- hh_budget %>%
   glimpse()
 
+# write this data set
+write_csv(d, "hh_budget.csv")
+
 # test and train split 
 test <- d %>%
   filter(Year >= 2012)

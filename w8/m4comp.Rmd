@@ -1,0 +1,278 @@
+---
+title: "M4 Competition"
+author: "Chris Mathys"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup
+
+Load libraries.
+
+```{r}
+library(tidyverse)
+library(tsibble)
+library(feasts)
+library(fable)
+```
+
+## Data preparation
+
+Load M4 Competition data.
+
+```{r}
+library(M4comp2018)
+data(M4)
+```
+
+Get all monthly time series.
+
+```{r}
+M4_monthly <- Filter(function(l) l$period == "Monthly", M4)
+```
+
+Print the first of the monthly time series.
+
+```{r}
+M4_monthly[[1]]$x
+```
+
+Create a tsibble with this series. The past is the training data for our forecasts, the future is the test data.
+
+```{r}
+(train <- as_tsibble(M4_monthly[[1]]$x))
+(test <- as_tsibble(M4_monthly[[1]]$xx))
+```
+
+## Plotting and transformation
+
+Plot our mystery time series.
+
+```{r}
+train %>% autoplot(value) +
+    labs(title = "Mystery time series")
+```
+
+Calculate the optimal $\lambda$ for the Box-Cox transformation.
+
+```{r}
+(lambda <- train %>%
+    features(value, feature = guerrero) %>%
+    pull(lambda_guerrero))
+```
+
+Do the Box-Cox transformation with the optimal $\lambda$ and add it as a further column to the tsibble.
+
+```{r}
+(train <- train %>% mutate(box_cox = box_cox(value, lambda = lambda)))
+(test <- test %>% mutate(box_cox = box_cox(value, lambda = lambda)))
+```
+
+Plot the transformed mystery time series.
+
+```{r}
+train %>% autoplot(box_cox) +
+    labs(title = "Transformed mystery time series")
+```
+
+## Feature exploration
+
+Autocorrelation features.
+
+```{r}
+train %>% features(value, feat_acf)
+```
+
+```{r}
+train %>% features(box_cox, feat_acf)
+```
+
+STL decomposition features.
+
+```{r}
+train %>% features(value, feat_stl)
+```
+
+```{r}
+train %>% features(box_cox, feat_stl)
+```
+## Modelling and forecasting
+
+Fit a few simple models to the raining data.
+
+```{r}
+mystery_fit <- train %>%
+    model(
+        Mean = MEAN(value),
+        `Naïve` = NAIVE(value),
+        `Seasonal naïve` = SNAIVE(value)
+    )
+```
+
+Generate forecasts.
+
+```{r}
+(mystery_fc <- mystery_fit %>% forecast(h = 18))
+```
+
+Plot forecasts against actual values.
+
+```{r}
+mystery_fc %>% autoplot(data = filter(train, index >= yearmonth("Jan 2012")), level = NULL) +
+    autolayer(test, colour = "black", .vars = value) +
+    labs(y = "Values", title = "Forecasts for mystery time series") +
+    guides(colour = guide_legend(title = "Forecast"))
+```
+
+## Residual diagnostics
+
+```{r}
+mystery_fit %>%
+    augment() %>%
+    filter(.model == "Naïve") %>%
+    autoplot(.innov) +
+    labs(y = "value", title = "Residuals from the naïve method")
+```
+
+
+
+```{r}
+mystery_fit %>%
+    augment() %>%
+    filter(.model == "Seasonal naïve") %>%
+    ACF(.innov) %>%
+    autoplot() +
+    labs(title = "Residuals from the seasonal naïve method")
+```
+
+```{r}
+train %>%
+    model(NAIVE(value)) %>%
+    gg_tsresiduals()
+```
+
+```{r}
+train %>%
+    model(SNAIVE(value)) %>%
+    gg_tsresiduals()
+```
+
+Perform a Ljung-Box test for autocorrelation. This turns out to be highly significant, which is not surprising given the obvious pattern in the autocorrelation plot. In general, tests like these tend to be too sensitive, and the dichotomy between significant and non-significant is problematic too. In most cases, looking at the plot will be more informative than this kind of test. 
+
+```{r}
+train %>%
+    model(NAIVE(value)) %>%
+    augment() %>%
+    features(.innov, ljung_box, lag = 10, dof = 0)
+```
+
+```{r}
+train %>%
+    model(SNAIVE(value)) %>%
+    augment() %>%
+    features(.innov, ljung_box, lag = 10, dof = 0)
+```
+
+## Forecast intervals
+
+Concentrate on the best among the simple forecasts: seasonal naïve.
+
+```{r}
+mystery_snaive_fit <- train %>% model(SNAIVE(value))
+mystery_snaive_fc <- mystery_snaive_fit %>% forecast(h = 18)
+```
+
+Inspect forecast intervals.
+
+```{r}
+mystery_snaive_fc %>% hilo()
+```
+
+Plot with forecast intervals.
+
+```{r}
+mystery_snaive_fc %>%
+    autoplot(filter(train, index >= yearmonth("Jan 2012")), level = c(50, 80)) +
+    labs(title="Mystery time series forecast with intervals", y="value" )
+```
+
+Generate possible futures.
+
+```{r, warning = FALSE}
+(mystery_snaive_sim <- mystery_snaive_fit %>% generate(h = 18, times = 5, bootstrap = TRUE))
+```
+
+```{r}
+train %>% filter(index >= yearmonth("Jan 2012")) %>%
+    ggplot(aes(x = index)) +
+    geom_line(aes(y = value)) +
+    geom_line(aes(y = .sim, colour = as.factor(.rep)), data = mystery_snaive_sim) +
+    labs(title = "Possible futures for the mystery time series") +
+    guides(colour = FALSE)
+```
+
+Bootstrap the prediction intervals.
+
+```{r, warning = FALSE}
+mystery_snaive_bsfc <- mystery_snaive_fit %>% forecast(h = 18, bootstrap = TRUE)
+```
+
+```{r}
+mystery_snaive_bsfc %>%
+    autoplot(filter(train, index >= yearmonth("Jan 2012")), level = c(50, 80))
+```
+
+## Transformations
+
+Create a forecast of the mystery time series using a random walk model with drift and a log transformation.
+
+
+```{r}
+mystery_rw_log_drift_fit <- train %>% model(RW(log(value) ~ drift()))
+mystery_rw_log_drift_fc <- mystery_rw_log_drift_fit %>% forecast(h = 18)
+```
+
+```{r}
+mystery_rw_log_drift_fc %>%
+    autoplot(filter(train, index >= yearmonth("Jan 2012")),
+             level = c(50, 80),
+             point_forecast = lst(mean, median)) +
+    labs(title="Mystery time series forecast with intervals", y="value" )
+```
+
+## Decomposition
+
+```{r}
+(mystery_dcmp <- train14 %>%
+    model(STL(value ~ trend(window = 16), robust = TRUE)) %>%
+    components() %>%
+    select(-.model))
+```
+
+```{r}
+mystery_dcmp %>%
+    model(NAIVE(season_adjust)) %>%
+    forecast() %>%
+    autoplot(filter(mystery_dcmp, index >= yearmonth("Jan 2007"))) +
+    labs(title = "Forecast for trend part of mystery time series")
+```
+
+```{r}
+mystery_dcmp_fit <- train %>%
+    model(stlf = decomposition_model(
+        STL(value ~ trend(window = 16), robust = TRUE),
+        NAIVE(season_adjust)
+    ))
+```
+
+
+```{r}
+mystery_dcmp_fit %>%
+    forecast() %>%
+    autoplot(filter(train, index >= yearmonth("Jan 2007")))
+```
+
+
