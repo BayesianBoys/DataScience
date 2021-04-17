@@ -4,9 +4,24 @@ import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 
+'''
+# Gaussian Processes
+'''
+
+'''
+Let's simulate data!
+'''
+
+lin_trend = st.slider("Linear trend", 0.0, 100.0)
+sinus = st.slider("Sinus", 0.0, 100.0)
+sinus_2 = st.slider("Sinus 2", 0.0, 100.0)
+sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0)
+
+
+
 ## FUNCTION 
 def f(x):
-    return 0.4 * x + 3 * np.sin(x) + 4 * np.sin(3 * x)
+    return lin_trend * x + sinus * np.sin(x) + sinus_2 * np.sin(sinus_2_period * x)
 
 def make_data(n):
     np.random.seed(42)
@@ -18,9 +33,11 @@ def make_data(n):
     data = pd.DataFrame({"x": x,
                          "y": y})
     
-    sns.lineplot(data = data, x = "x", y = "y")
+    plotting = sns.lineplot(data = data, x = "x", y = "y")
     
-    return data
+    return (data
+
+make_data(100)
 
 from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
