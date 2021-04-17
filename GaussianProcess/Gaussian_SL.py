@@ -35,9 +35,7 @@ def make_data(n):
     
     plotting = sns.lineplot(data = data, x = "x", y = "y")
     
-    return (data
-
-make_data(100)
+    return data
 
 from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
