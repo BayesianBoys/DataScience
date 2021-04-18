@@ -17,6 +17,8 @@ sinus = st.slider("Sinus", 0.0, 100.0)
 sinus_2 = st.slider("Sinus 2", 0.0, 100.0)
 sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0)
 
+noise_amount = st.slider("Noise Amount", 1.0, 10.0, 1.0)
+
 ## FUNCTION 
 def f(x):
     return lin_trend * x + sinus * np.sin(x) + sinus_2 * np.sin(sinus_2_period * x)
@@ -51,6 +53,53 @@ kernel_select = st.sidebar.multiselect("Select Kernels", ["RationalQuadratic", "
 n = st.sidebar.number_input("Select number of points", 20)
 x_end = st.sidebar.number_input("Select end for X", 10)
 after_end = st.sidebar.number_input("Select end after X", 10)
+
+expander = st.beta_expander("Guide to exploring the app")
+
+with expander:
+    f'''
+    ### Data Generation
+    This app was made to showcase $sklearn$'s GaussianProcesses - an extremely useful method for time-series forecasting.
+    Above you will find sliders, which specify the data generating function. Currently, the data-generating function is
+
+    $$f(x) = {lin_trend} \cdot x + {sinus} \cdot sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$$
+
+    Optionally, the data generating function is not perfect. This can be used to simulate measurement errors. This is specified in
+    the "Noise Amount"-slider. The data is sampled from a Gaussian distribution around the point ($x$), with a standard deviation equal to 
+    the Noise Amount:
+
+    $$x = N(f(x), {noise_amount})$$
+
+    ### Kernels
+    Kernels are the way Gaussian Processes are specified. As a starter intuition, these kernels can be seen as which distribution of functions,
+    that the model is sampling from. The kernels can be combined by either multiplying or adding them together to create
+    more complex kernels. In this app, all kernels are combined by adding them. For all kernels, $k_i$, you can specify their weight, $w_i$:
+
+    $$k = \sum_i w_i \cdot k_i$$
+
+    Some intuitions are useful here. Here is what we have learned so far. 
+
+    The *Dot Product* can be viewed as a linear kernel. It can be used to sample from models that capture the linear trend in the data.
+
+    The *Exponential Sine Squared* kernels can be used to sample models that capture the periodic/cyclical relations in the data. The
+    reason that there are two is to model two different cycles. The second Exponential Sine Squared Kernel can adjusted in terms of its periodicity.
+    
+    The *White Kernel* is white noise and can be used to model noise (i.e. measurement errors) in the data. Furthermore, it is useful to make the model fit the data.
+
+    The *RGB* kernel treats points that are close to each other in $x$ as being close in $y$. 
+
+    The *Rational Quadratic* is still a bit of a mystery. But it seems it might be useful if there was a non-linear trend that we needed to capture.
+
+    Almost all kernels have an $l$-parameter, which can be understood as how local or global the kernel is. The larger $l$, the more global the kernel is. 
+
+    ### Train and Test
+    The model currently sees {n} points between 0 and {x_end}. The MSE is calculated for the test set. 
+
+    ### Known Issues
+    Currently, when parameters in the kernels are specified, for which there is no good solution, the kernel will default to the last value,
+    which gave valid responses. If nothing you do changes the plot, please try to reset the kernels and start over. Another alternative fix is to 
+    play around with the data by adding additional points or extending the range of the training data. 
+    '''
 
 ## RATIONAL QUADRATIC
 
@@ -93,15 +142,6 @@ np.random.seed(1)
   #  return x * np.sin(x)
 if kernel_select:
     # ----------------------------------------------------------------------
-    #  First the noiseless case
-    X = np.atleast_2d([1., 3., 5., 6., 7., 8.]).T
-
-    # Observations
-    y = f(X).ravel()
-
-    # Mesh the input space for evaluations of the real function, the prediction and
-    # its MSE
-    x = np.atleast_2d(np.linspace(0, 10, 1000)).T
 
     # Instantiate a Gaussian Process model
 
@@ -124,27 +164,6 @@ if kernel_select:
     #kernel = RationalQuadratic(length_scale = rational, alpha = alpha) + ExpSineSquared(length_scale = exp_sine_1) + ExpSineSquared(length_scale = exp_sine_2, periodicity= 4)
     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
 
-    # Fit to data using Maximum Likelihood Estimation of the parameters
-    gp.fit(X, y)
-
-    # Make the prediction on the meshed x-axis (ask for MSE as well)
-    y_pred, sigma = gp.predict(x, return_std=True)
-
-    # Plot the function, the prediction and the 95% confidence interval based on
-    # the MSE
-    plt.figure()
-    plt.plot(x, f(x), 'r:', label=r'$f(x) = 0.4 \cdot x + 3 \cdot sin(x) + 4 * \sin(3 \cdot x)$')
-    plt.plot(X, y, 'r.', markersize=10, label='Observations')
-    plt.plot(x, y_pred, 'b-', label='Prediction')
-    plt.fill(np.concatenate([x, x[::-1]]),
-            np.concatenate([y_pred - 1.9600 * sigma,
-                            (y_pred + 1.9600 * sigma)[::-1]]),
-            alpha=.5, fc='b', ec='None', label='95% confidence interval')
-    plt.xlabel('$x$')
-    plt.ylabel('$f(x)$')
-    plt.ylim(-10, 20)
-    plt.legend(loc='upper left')
-
     # ----------------------------------------------------------------------
     # now the noisy case
     X = np.linspace(0.1, x_end, n)
@@ -156,7 +175,7 @@ if kernel_select:
 
     # Observations and noise
     y = f(X).ravel()
-    dy = 0.5 + 1.0 * np.random.random(y.shape)
+    dy = 0.5 + noise_amount * np.random.random(y.shape)
     noise = np.random.normal(0, dy)
     y += noise
 
@@ -174,7 +193,7 @@ if kernel_select:
     X_test = np.atleast_2d(X_test).T
 
     y_test = f(X_test).ravel()
-    dy_test = 0.5 + 1.0 * np.random.random(y_test.shape)
+    dy_test = 0.5 + noise_amount * np.random.random(y_test.shape)
     noise = np.random.normal(0, dy_test)
     y_test += noise
 
@@ -209,5 +228,5 @@ if kernel_select:
     y_predding, sigma_predding = gp.predict(X_test, return_std=True)
 
     f'''
-    ## Mean squared error: {get_RMSE(y_test, y_predding)}
+    ## $$MSE = {get_RMSE(y_test, y_predding)}$$
     '''
