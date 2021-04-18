@@ -206,8 +206,8 @@ if kernel_select:
     plt.legend(loc='upper left')
     st.pyplot(plt)
 
-y_predding, sigma_predding = gp.predict(X_test, return_std=True)
+    y_predding, sigma_predding = gp.predict(X_test, return_std=True)
 
-f'''
-## Mean squared error: {get_RMSE(y_test, y_predding)}
-'''
+    f'''
+    ## Mean squared error: {get_RMSE(y_test, y_predding)}
+    '''
