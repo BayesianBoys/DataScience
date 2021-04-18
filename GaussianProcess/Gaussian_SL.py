@@ -17,11 +17,14 @@ sinus = st.slider("Sinus", 0.0, 100.0)
 sinus_2 = st.slider("Sinus 2", 0.0, 100.0)
 sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0)
 
-
-
 ## FUNCTION 
 def f(x):
     return lin_trend * x + sinus * np.sin(x) + sinus_2 * np.sin(sinus_2_period * x)
+
+def get_RMSE(y, y_pred):
+    listing = [(y[i]-y_pred[i])**2 for i in range(len(y))]
+    return sum(listing)/len(listing)
+
 
 def make_data(n):
     np.random.seed(42)
@@ -41,7 +44,7 @@ from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern, WhiteKernel, ConstantKernel, RBF, RationalQuadratic, ExpSineSquared, DotProduct, RBF
 
-kernel_select = st.sidebar.multiselect("Select Kernels", ["RationalQuadratic", "ExpSineSquared", "ExpSineSquared(period = 4)", "DotProduct", "WhiteKernel", "RBF"], "RationalQuadratic")
+kernel_select = st.sidebar.multiselect("Select Kernels", ["RationalQuadratic", "ExpSineSquared", "ExpSineSquared_2", "DotProduct", "WhiteKernel", "RBF"], "RationalQuadratic")
 
 ### GLOBAL PARAMS
 
@@ -53,27 +56,34 @@ after_end = st.sidebar.number_input("Select end after X", 10)
 
 expander = st.sidebar.beta_expander("Rational Quadratic")
 with expander:
+    rational_weight = st.slider("Rational Quadratic Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
     rational = st.slider("Rational Quadratic Kernel L", min_value = 0.1, max_value = 100.0)
     alpha = st.slider("Rational Quadratic Alpha", min_value = 0.1, max_value = 100.0)
 
 expander = st.sidebar.beta_expander("Dot Product")
 with expander:
+    dot_weight = st.slider("Dot Product Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
     sigma_dot = st.slider("Sigma for DotProduct", min_value = 0.0, max_value = 100.0)
 
 expander = st.sidebar.beta_expander("Exponential Sine Squared")
 with expander:
+    sine_weight = st.slider("Exp Sine Squared Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
     exp_sine_1 = st.slider("First Exp Sine Squared L", min_value = 0.1, max_value = 100.0)
 
-expander = st.sidebar.beta_expander("Exponential Sine Squared (period = 4)")
+expander = st.sidebar.beta_expander("Exponential Sine Squared 2")
 with expander:
+    sine_weight_2 = st.slider("Exp Sine Squared Weight 2", min_value = 0.1, max_value = 100.0, value = 1.0)
     exp_sine_2 = st.slider("Second Exp Sine Squared L", min_value = 0.1, max_value = 100.0)
+    exp_sine_2_period = st.slider("Second Exp Sine Squared Period", min_value = 0.1, max_value = 100.0)
 
 expander = st.sidebar.beta_expander("RBF")
 with expander:
+    rbf_weight = st.slider("RBF Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
     rbf = st.slider("RBF L", min_value = 0.1, max_value = 100.0)
 
 expander = st.sidebar.beta_expander("WhiteKernel")
 with expander:
+    white_weight = st.slider("White Noise Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
     white_noise = st.slider("NoiseLevel", min_value = 0.1, max_value = 10.0)
 
 np.random.seed(1)
@@ -96,12 +106,12 @@ if kernel_select:
     # Instantiate a Gaussian Process model
 
     interpret_dict = {
-        "RationalQuadratic": RationalQuadratic(length_scale = rational, alpha = alpha),
-        "ExpSineSquared": ExpSineSquared(length_scale = exp_sine_1),
-        "ExpSineSquared(period = 4)": ExpSineSquared(length_scale = exp_sine_2, periodicity= 4),
-        "DotProduct": DotProduct(sigma_0 = sigma_dot),
-        "WhiteKernel": WhiteKernel(white_noise),
-        "RBF": RBF(length_scale=rbf)
+        "RationalQuadratic": rational_weight * RationalQuadratic(length_scale = rational, alpha = alpha),
+        "ExpSineSquared": sine_weight * ExpSineSquared(length_scale = exp_sine_1),
+        "ExpSineSquared_2": sine_weight_2 * ExpSineSquared(length_scale = exp_sine_2, periodicity= exp_sine_2_period),
+        "DotProduct": dot_weight * DotProduct(sigma_0 = sigma_dot),
+        "WhiteKernel": white_weight * WhiteKernel(white_noise),
+        "RBF": rbf_weight * RBF(length_scale=rbf)
     }
 
     for i, ele in enumerate(kernel_select):
@@ -174,8 +184,9 @@ if kernel_select:
 
     # Plot the function, the prediction and the 95% confidence interval based on
     # the MSE
+
     plt.figure()
-    plt.plot(x, f(x), 'r:', label=r'$f(x) = 0.4 \cdot x + 3 \cdot sin(x) + 4 * \sin(3 \cdot x)$')
+    plt.plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {sinus} \cdot sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$')
     plt.errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
     plt.plot(x, y_pred, 'b-', label='Prediction')
     plt.fill(np.concatenate([x, x[::-1]]),
@@ -194,3 +205,9 @@ if kernel_select:
     plt.axvline(x_end)
     plt.legend(loc='upper left')
     st.pyplot(plt)
+
+y_predding, sigma_predding = gp.predict(X_test, return_std=True)
+
+f'''
+## Mean squared error: {get_RMSE(y_test, y_predding)}
+'''
