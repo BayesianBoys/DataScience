@@ -96,9 +96,13 @@ with expander:
 
     $$k = \sum_i w_i \cdot k_i$$
 
+    The only exception to this rule is the Dot Product Squared kernel. It is simply the Dot Product times itself.
+
     Some intuitions are useful here. Here is what we have learned so far. 
 
     The *Dot Product* can be viewed as a linear kernel. It can be used to sample from models that capture the linear trend in the data.
+
+    The *Dot Product Squared* is maybe not surprisingly a polynomial kernel. It can be used to sample from models that capture a quadratic trend in the data.
 
     The *Exponential Sine Squared* kernels can be used to sample models that capture the periodic/cyclical relations in the data. The
     reason that there are two is to model two different cycles. The second Exponential Sine Squared Kernel can adjusted in terms of its periodicity.
