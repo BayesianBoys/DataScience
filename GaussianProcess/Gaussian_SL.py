@@ -267,12 +267,12 @@ if kernel_select:
     col1, col2, col3 = st.beta_columns([1,6,1])
 
     with col1:
-    st.write("")
+        st.write("")
 
     with col2:
-    f'''
-    ## $$MSE = {get_RMSE(y_test, y_predding)}$$
-    '''
+        f'''
+        ## $$MSE = {get_RMSE(y_test, y_predding)}$$
+        '''
 
     with col3:
-    st.write("")
+        st.write("")
