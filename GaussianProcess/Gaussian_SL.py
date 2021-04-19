@@ -12,7 +12,7 @@ sns.set_style(
 sns.set_palette(palette='deep')
 sns_c = sns.color_palette(palette='deep')
 
-print(os.getcwd())
+st.write(os.getcwd())
 
 st.set_page_config(
     page_title="Gaussian Processes",
