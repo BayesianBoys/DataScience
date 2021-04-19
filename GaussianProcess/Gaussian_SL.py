@@ -264,14 +264,15 @@ if kernel_select:
     ax[1].set(title='Distribution of Error', xlabel='error', ylabel=None);
     st.pyplot(fig)
 
+    col1, col2, col3 = st.beta_columns([1,6,1])
+
+    with col1:
+    st.write("")
+
+    with col2:
     f'''
     ## $$MSE = {get_RMSE(y_test, y_predding)}$$
     '''
 
-    ## TEST COVARIANCE:
-    #rbf_kernel = interpret_dict["RBF"]
-    #gp_tester = GaussianProcessRegressor(kernel=rbf_kernel)
-    #gp_tester.fit(X, y)
-    #gp_tester[0]
-    #sns.heatmap(gp_tester)
-    #st.pyplot(plt)
+    with col3:
+    st.write("")
