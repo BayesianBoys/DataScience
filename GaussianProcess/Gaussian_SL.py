@@ -184,7 +184,7 @@ if kernel_select:
         "WhiteKernel": white_weight * WhiteKernel(white_noise),
         "RBF": rbf_weight * RBF(length_scale=rbf),
         "Matern": matern_weight * Matern(length_scale=matern_length, nu = matern_nu),
-        "DotProduct Squared": dot_squared_weight * DotProduct(sigma_0=squared_sigma**2)
+        "DotProduct Squared": dot_squared_weight * DotProduct(sigma_0=squared_sigma) * DotProduct(sigma_0=squared_sigma)
     }
 
     for i, ele in enumerate(kernel_select):
