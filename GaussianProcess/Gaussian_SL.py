@@ -64,7 +64,7 @@ from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern, WhiteKernel, ConstantKernel, RBF, RationalQuadratic, ExpSineSquared, DotProduct, RBF
 
-kernel_select = st.sidebar.multiselect("Select Kernels", ["RationalQuadratic", "ExpSineSquared", "ExpSineSquared_2", "DotProduct", "WhiteKernel", "RBF", "Matern"], "RationalQuadratic")
+kernel_select = st.sidebar.multiselect("Select Kernels", ["RationalQuadratic", "ExpSineSquared", "ExpSineSquared_2", "DotProduct", "WhiteKernel", "RBF", "Matern", "DotProduct Squared"], "RationalQuadratic")
 
 ### GLOBAL PARAMS
 
@@ -133,6 +133,11 @@ with expander:
     dot_weight = st.slider("Dot Product Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
     sigma_dot = st.slider("Sigma for DotProduct", min_value = 0.0, max_value = 100.0)
 
+expander = st.sidebar.beta_expander("Dot Product Squared")
+with expander:
+    dot_squared_weight = st.slider("Dot Product Squared Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
+    squared_sigma = st.slider("Sigma for DotProduct Squared", min_value = 0.0, max_value = 100.0)
+
 expander = st.sidebar.beta_expander("Exponential Sine Squared")
 with expander:
     sine_weight = st.slider("Exp Sine Squared Weight", min_value = 0.1, max_value = 100.0, value = 1.0)
@@ -178,7 +183,8 @@ if kernel_select:
         "DotProduct": dot_weight * DotProduct(sigma_0 = sigma_dot),
         "WhiteKernel": white_weight * WhiteKernel(white_noise),
         "RBF": rbf_weight * RBF(length_scale=rbf),
-        "Matern": matern_weight * Matern(length_scale=matern_length, nu = matern_nu)
+        "Matern": matern_weight * Matern(length_scale=matern_length, nu = matern_nu),
+        "DotProduct Squared": dot_squared_weight * DotProduct(sigma_0=squared_sigma**2)
     }
 
     for i, ele in enumerate(kernel_select):
