@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import os
+import re
 import matplotlib.pyplot as plt
 
 sns.set_style(
@@ -270,6 +271,13 @@ if kernel_select:
         st.write("")
 
     with col2:
+        stringing = str(gp.kernel)
+        stringing = stringing.replace("**", "^")
+        stringing = stringing.replace("*", "\cdot")
+        stringing = stringing.replace("_", " ")
+
+        #stringing = re.sub(r"**", "^", stringing)
+        f'''Current settings: ${stringing}$'''
         f'''
         ## $$MSE = {get_RMSE(y_test, y_predding)}$$
         '''
