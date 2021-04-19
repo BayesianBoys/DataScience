@@ -33,12 +33,13 @@ lin_trend = st.slider("Linear trend", -50.0, 50.0)
 sinus = st.slider("Sinus", 0.0, 100.0)
 sinus_2 = st.slider("Sinus 2", 0.0, 100.0)
 sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0)
+exponential = st.slider("Exponential", 0.0, 100.0)
 
 noise_amount = st.slider("Noise Amount", 1.0, 10.0, 1.0)
 
 ## FUNCTION 
 def f(x):
-    return lin_trend * x + sinus * np.sin(x) + sinus_2 * np.sin(sinus_2_period * x)
+    return lin_trend * x + sinus * np.sin(x) + sinus_2 * np.sin(sinus_2_period * x) + exponential * np.exp(x)
 
 def get_RMSE(y, y_pred):
     listing = [(y[i]-y_pred[i])**2 for i in range(len(y))]
