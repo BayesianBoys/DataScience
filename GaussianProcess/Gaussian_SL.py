@@ -237,7 +237,7 @@ if kernel_select:
     # Plot the function, the prediction and the 95% confidence interval based on
     # the MSE
     fig, ax = plt.subplots(2, 1, figsize=(12, 10)) 
-    ax[0].plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {poly_trend} \cdot x^2 +{sinus} \cdot sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$')
+    ax[0].plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {poly_trend} \cdot x^2 +{sinus} \cdot \sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$')
     ax[0].errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
     ax[0].plot(x, y_pred, 'b-', label='Prediction')
     ax[0].fill(np.concatenate([x, x[::-1]]),
