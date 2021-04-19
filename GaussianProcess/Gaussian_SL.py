@@ -253,7 +253,7 @@ if kernel_select:
     #ax[0].xlabel('$x$')
     #ax[0].ylabel('$f(x)$')
     ax[0].axvline(x_end)
-    ax[0].set(title = "Gaussian Process", xlabel = "$x$", ylabel = "$f(x)$")
+    ax[0].set(xlabel = "$x$", ylabel = "$f(x)$")
     ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, 1.2),
           fancybox=True, shadow=True, ncol=2)
     ### HISTOGRAM:
