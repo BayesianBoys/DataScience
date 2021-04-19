@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import seaborn as sns
 import pandas as pd
+import os
 import matplotlib.pyplot as plt
 
 sns.set_style(
@@ -11,6 +12,7 @@ sns.set_style(
 sns.set_palette(palette='deep')
 sns_c = sns.color_palette(palette='deep')
 
+print(os.getcwd())
 
 st.set_page_config(
     page_title="Gaussian Processes",
