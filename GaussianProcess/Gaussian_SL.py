@@ -29,7 +29,7 @@ st.image("bayes_bois.png", width = 100)
 Let's simulate data!
 '''
 
-lin_trend = st.slider("Linear trend", 0.0, 100.0)
+lin_trend = st.slider("Linear trend", -50.0, 50.0)
 sinus = st.slider("Sinus", 0.0, 100.0)
 sinus_2 = st.slider("Sinus 2", 0.0, 100.0)
 sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0)
