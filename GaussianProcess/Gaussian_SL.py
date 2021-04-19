@@ -30,7 +30,7 @@ Let's simulate data!
 '''
 
 lin_trend = st.slider("Linear trend", -50.0, 50.0)
-poly_trend = st.slider("Polynomial Trend", -50.0, 50.0)
+poly_trend = st.slider("Polynomial Trend", -1.0, 1.0)
 sinus = st.slider("Sinus", 0.0, 100.0)
 sinus_2 = st.slider("Sinus 2", 0.0, 100.0)
 sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0)
@@ -81,7 +81,7 @@ with expander:
     This app was made to showcase $sklearn$'s GaussianProcesses - an extremely useful method for time-series forecasting.
     Above you will find sliders, which specify the data generating function. Currently, the data-generating function is
 
-    $$f(x) = {lin_trend} \cdot x + {sinus} \cdot sin(x) + {sinus_2} \cdot \sin({sinus_2_period} \cdot x)$$
+    $$f(x) = {lin_trend} \cdot x + {poly_trend} \cdot x^2 + {sinus} \cdot sin(x) + {sinus_2} \cdot \sin({sinus_2_period} \cdot x)$$
 
     Optionally, the data generating function is not perfect. This can be used to simulate measurement errors. This is specified in
     the "Noise Amount"-slider. The data is sampled from a Gaussian distribution around the point ($x$), with a standard deviation equal to 
@@ -237,7 +237,7 @@ if kernel_select:
     # Plot the function, the prediction and the 95% confidence interval based on
     # the MSE
     fig, ax = plt.subplots(2, 1, figsize=(12, 10)) 
-    ax[0].plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {sinus} \cdot sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$')
+    ax[0].plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {poly_trend} \cdot x^2 +{sinus} \cdot sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$')
     ax[0].errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
     ax[0].plot(x, y_pred, 'b-', label='Prediction')
     ax[0].fill(np.concatenate([x, x[::-1]]),
