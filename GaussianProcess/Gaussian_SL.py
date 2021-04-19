@@ -14,11 +14,11 @@ sns_c = sns.color_palette(palette='deep')
 
 st.set_page_config(
     page_title="Gaussian Processes",
-    #page_icon="bayes_bois.png",
+    page_icon="bayes_bois.png",
     initial_sidebar_state="expanded",
     )
-st.write(os.getcwd())
-#st.image("bayes_bois.png", width = 100)
+
+st.image("bayes_bois.png", width = 100)
 
 '''
 # Gaussian Processes
