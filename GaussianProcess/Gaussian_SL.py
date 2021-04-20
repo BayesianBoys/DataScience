@@ -87,7 +87,7 @@ with expander:
     the "Noise Amount"-slider. The data is sampled from a Gaussian distribution around the point ($x$), with a standard deviation equal to 
     the Noise Amount:
 
-    $$x = N(f(x), {noise_amount})$$
+    $$x \sim N(f(x), {noise_amount})$$
 
     ### Kernels
     Kernels are the way Gaussian Processes are specified. As a starter intuition, these kernels can be seen as which distribution of functions,
