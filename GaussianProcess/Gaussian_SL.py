@@ -275,7 +275,7 @@ if kernel_select:
     ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, 1.2),
           fancybox=True, shadow=True, ncol=2)
     ### HISTOGRAM:
-    sns.distplot(a=errors, bins = 10, ax=ax[1])
+    sns.distplot(a=errors, bins = 20, ax=ax[1])
     ax[1].axvline(x=errors_mean, color=sns_c[3], linestyle='--', label=f'$\mu$')
     ax[1].axvline(x=errors_mean + 2*errors_std, color=sns_c[4], linestyle='--', label=f'$\mu \pm 2\sigma$')
     ax[1].axvline(x=errors_mean - 2*errors_std, color=sns_c[4], linestyle='--')
