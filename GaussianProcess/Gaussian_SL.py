@@ -28,14 +28,21 @@ st.image("bayes_bois.png", width = 100)
 '''
 Let's simulate data!
 '''
+expander = st.beta_expander("Trends")
+with expander:
+    lin_trend = st.slider("Linear trend", -50.0, 50.0, 0.4)
+    poly_trend = st.slider("Polynomial Trend", -1.0, 1.0, 0.0)
 
-lin_trend = st.slider("Linear trend", -50.0, 50.0, 0.4)
-poly_trend = st.slider("Polynomial Trend", -1.0, 1.0, 0.0)
-sinus = st.slider("Sinus", 0.0, 100.0, 1.0)
-sinus_2 = st.slider("Sinus 2", 0.0, 100.0, 1.0)
-sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0, 0.4)
+expander = st.beta_expander("Seasonality")
+with expander: 
+    sinus = st.slider("Sinus", 0.0, 100.0, 1.0)
+    sinus_2 = st.slider("Sinus 2", 0.0, 100.0, 1.0)
+    sinus_2_period = st.slider("Sinus 2 Period", 0.0, 100.0, 0.4)
 
-noise_amount = st.slider("Noise Amount", 1.0, 100.0, 1.0)
+expander = st.beta_expander("Noise")
+
+with expander:
+    noise_amount = st.slider("Noise Amount", 1.0, 100.0, 1.0)
 
 ## FUNCTION 
 def f(x):
@@ -87,7 +94,7 @@ with expander:
     the "Noise Amount"-slider. The data is sampled from a Gaussian distribution around the point ($x$), with a standard deviation equal to 
     the Noise Amount:
 
-    $$x = N(f(x), {noise_amount})$$
+    $$x \sim N(f(x), {noise_amount})$$
 
     ### Kernels
     Kernels are the way Gaussian Processes are specified. As a starter intuition, these kernels can be seen as which distribution of functions,
@@ -247,7 +254,7 @@ if kernel_select:
     # Plot the function, the prediction and the 95% confidence interval based on
     # the MSE
     fig, ax = plt.subplots(2, 1, figsize=(12, 10)) 
-    ax[0].plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {poly_trend} \cdot x^2 +{sinus} \cdot \sin(x) + {sinus_2} * \sin({sinus_2_period} \cdot x)$')
+    ax[0].plot(x, f(x), 'r:', label=rf'$f(x) = {lin_trend} \cdot x + {poly_trend} \cdot x^2 +{sinus} \cdot \sin(x) + {sinus_2} \cdot \sin({sinus_2_period} \cdot x)$')
     ax[0].errorbar(X.ravel(), y, dy, fmt='r.', markersize=10, label='Observations')
     ax[0].plot(x, y_pred, 'b-', label='Prediction')
     ax[0].fill(np.concatenate([x, x[::-1]]),
@@ -268,7 +275,7 @@ if kernel_select:
     ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, 1.2),
           fancybox=True, shadow=True, ncol=2)
     ### HISTOGRAM:
-    sns.distplot(a=errors, bins = 10, ax=ax[1])
+    sns.distplot(a=errors, bins = 20, ax=ax[1])
     ax[1].axvline(x=errors_mean, color=sns_c[3], linestyle='--', label=f'$\mu$')
     ax[1].axvline(x=errors_mean + 2*errors_std, color=sns_c[4], linestyle='--', label=f'$\mu \pm 2\sigma$')
     ax[1].axvline(x=errors_mean - 2*errors_std, color=sns_c[4], linestyle='--')
